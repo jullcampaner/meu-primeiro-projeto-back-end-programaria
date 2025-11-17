@@ -1,39 +1,99 @@
-const express = require("express")
-const router = express.Router()
+const express = require("express") //aqui estou iniciando o express
+const router = express.Router() //aqui estou configurando a primeira parte da rota
 
-const app = express()
-const porta = 3333
+const cors=require('cors') //aqui estou trazendo o pacote cors que permite instalar e consumir essa API por um frontend
 
-const mulheres = [
-    {
-        Nome: 'Jull Freitas',
-        Imagem: 'https://media.licdn.com/dms/image/v2/D4D03AQGilxoruRtY_Q/profile-displayphoto-scale_200_200/B4DZjE2pcOG8AY-/0/1755649318508?e=1763596800&v=beta&t=2kJMkyXUBnhMQ_ZfJC28lgZSjQiDFGGKofUxl1SVdzk',
-        Minibio: 'Product Owner, 29 anos, quase 8 anos de Evoluservices. Ama gatinhos, artesanato e café.'
-    },
-    {
-        Nome: 'Fabi Nicchio',
-        Imagem: 'https://ca.slack-edge.com/E08UV3N83U5-U06N076RG-9d08c837239c-512',
-        Minibio: 'Líder inspiradora, dona do Kovu e da Mia, ama RPG e faz uma pizza incrível.'
-    },
-    {
-        Nome: 'Camis Porfirio',
-        Imagem: 'https://ca.slack-edge.com/E08UV3N83U5-U0103BQ88R2-4e228d522f21-512',
-        Minibio: 'Faz curso de palhaço e se pendura em bambolê. Dona do George nenê, ama (e arrasa em) tudo que é artesanato.'
-    },
-    {
-        Nome: 'Nat Benson',
-        Imagem:'https://ca.slack-edge.com/E08UV3N83U5-UT3KE61M0-b50e8db42587-512',
-        Minibio: 'Inteligentíssima, começou com QA, é gestora de pessoas, me inspira a começar a ler uns livros, atura o Vini (não sei como)'
+const conectaBancoDeDados = require('./bancoDeDados') //aqui estou conectando ao arquivo bancoDeDados
+conectaBancoDeDados () //aqui estou chamando a função que conecta o banco de dados
+
+const Mulher = require('./mulherModel') //aqui estou vinculando o objeto mulher ao modelo de preenchimento correto
+
+const app = express() //aqui estou iniciando o app
+app.use(express.json())
+app.use(cors())
+
+const porta = 3333 //aqui estou criando a porta
+
+//aqui estou setando a função de mostrar mulheres (GET)
+async function mostraMulheres(request, response) {
+    try {
+        const mulheresVindasDoBancoDeDados = await Mulher.find()
+
+         response.json(mulheresVindasDoBancoDeDados)
+
+    } catch (erro) {
+        console.log(erro)
+
     }
-]
-
-function mostraMulheres(request, response) {
-    response.json(mulheres)
+   
 }
 
+//aqui estou setando a função (POST)
+async function criaMulher(request, response) {
+    const novaMulher = new Mulher ({
+        nome: request.body.nome,
+        imagem: request.body.imagem,
+        minibio: request.body.minibio,
+        citacao: request.body.citacao
+    })
+
+    try {
+        const mulherCriada = await novaMulher.save()
+
+        response.status(201).json (mulherCriada)
+    } catch (erro) {
+        console.log(erro)
+    }
+}
+
+//aqui estou setando a função (PATCH)
+async function corrigeMulher(request,response){
+    try {
+        const mulherEncontrada = await Mulher.findById (request.params.id)
+
+        if (request.body.nome) {
+            mulherEncontrada.nome = request.body.nome
+        }
+
+        if (request.body.imagem) {
+            mulherEncontrada.imagem = request.body.imagem
+        }
+
+        if (request.body.minibio) {
+            mulherEncontrada.minibio = request.body.minibio
+        }
+
+        if (request.body.citacao) {
+            mulherEncontrada.citacao = request.body.citacao
+        }
+
+        const mulherAtualizadaNoBancoDeDados = await mulherEncontrada.save()
+        response.json(mulherAtualizadaNoBancoDeDados)
+        
+    } catch (erro) {
+        console.log (erro)
+    }
+}
+
+//aqui estou setando a função (DELETE)
+async function deletaMulher(request,response) {
+   try {
+    await Mulher.findByIdAndDelete(request.params.id)
+    response.json({message: 'Mulher deletada com sucesso!'})
+
+   } catch (erro) {
+    console.log (erro)
+   }
+}
+
+app.use(router.get('/mulheres', mostraMulheres)) //aqui estou configurando a rota GET /mulheres
+app.use(router.post('/mulheres', criaMulher)) //aqui estou configurando a rota POST /mulheres
+app.use(router.patch('/mulheres/:id', corrigeMulher)) //aqui estou configurando a rota PATCH /mulheres/:id
+app.use(router.delete('/mulheres/:id', deletaMulher)) //aqui estou configurando a rota DELETE /mulheres/:id
+
+//aqui estou setando a função de retorno da PORTA no node
 function mostraPorta() {
     console.log("Comemore Jull! Servidor criado e rodando na porta", porta)
 }
 
-app.use(router.get('/mulheres', mostraMulheres))
-app.listen(porta, mostraPorta)
+app.listen(porta, mostraPorta) //aqui o servidor está ouvindo a porta
